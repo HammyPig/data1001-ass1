@@ -1,0 +1,232 @@
+---
+title: "Reproducible Report Template - Basic"
+author: "Student/s SID"
+subtitle: "Project 1"
+date: "University of Sydney | Unit of Study | March 2020"
+output:
+  html_document:
+    fig_caption: yes
+    number_sections: yes
+    self_contained: yes
+    theme: flatly
+    toc: true
+    toc_depth: 3
+    toc_float: true
+    code_folding: hide
+---
+
+<br>
+
+# Executive Summary
+- The aim of this report is to ...
+- The main discoveries are ...
+
+<br>
+
+# Full Report
+
+## Initial Data Analysis (IDA)
+
+RStudio has many data sets already loaded in. The example below uses preloaded data direct from RStudio example dataset: mtcars.
+
+Read about the [mtcars data set](https://stat.ethz.ch/R-manual/R-devel/library/datasets/html/mtcars.html).
+
+In the rmd file, you will see how you can load your own dataset from either 1) an online source using a URL or 2) a local file on your own computer.
+
+```{r}
+library("ggplot2")
+library("RColorBrewer")
+survey = read.csv("data/finalsurvey.csv")
+
+# Setting Variables
+sleepHours = survey$How.many.hours.of.sleep.do.you.usually.get.
+gender = survey$What.gender.do.you.identify.as.
+age = survey$How.old.are.you.
+sleepConsistency = survey$How.many.days.a.week.do.you.usually.get.this.amount.of.sleep.
+sleepQuality = survey$How.would.you.rate.the.quality.of.your.sleep.on.average.
+sleepTime = survey$What.time.do.you.usually.go.to.bed.
+familyHistory = survey$Does.your.family.have.a.history.of.mental.health.issues.
+uneasiness = survey$I.found.it.difficult.to.relax.
+avolition = survey$I.found.it.hard.to.work.up.the.initiative.to.do.things.
+pessimism = survey$I.felt.like.I.had.nothing.to.look.forward.to.
+panic = survey$I.felt.like.I.was.close.to.panic.
+overwhelmed = survey$I.found.myself.feeling.overwhelmed.
+exerciseTime = survey$How.often.do.you.usually.exercise.
+exerciseQuality = survey$How.would.you.rate.the.intensity.of.your.exercise.
+
+# Ordering Variable Values
+exerciseTime = factor(exerciseTime, levels = c("Never", "Rarely", "Once or twice a week", "A few times a week", "Nearly everyday", "Everyday"))
+
+# Exercise Time Rating
+exerciseTimeRating = exerciseTime
+levels(exerciseTimeRating)[levels(exerciseTimeRating)=="Never"] <- 0
+levels(exerciseTimeRating)[levels(exerciseTimeRating)=="Rarely"] <- 1
+levels(exerciseTimeRating)[levels(exerciseTimeRating)=="Once or twice a week"] <- 2
+levels(exerciseTimeRating)[levels(exerciseTimeRating)=="A few times a week"] <- 3
+levels(exerciseTimeRating)[levels(exerciseTimeRating)=="Nearly everyday"] <- 4
+levels(exerciseTimeRating)[levels(exerciseTimeRating)=="Everyday"] <- 5
+
+exerciseTimeRating = as.numeric(exerciseTimeRating)
+
+# Sleep Hours
+levels(sleepHours)[levels(sleepHours)=="Less than 4 hours"] <- "<4"
+levels(sleepHours)[levels(sleepHours)=="4-6 hours"] <- "4-6"
+levels(sleepHours)[levels(sleepHours)=="6-8 hours"] <- "6-8"
+levels(sleepHours)[levels(sleepHours)=="8-10 hours"] <- "8-10"
+levels(sleepHours)[levels(sleepHours)=="More than 10 hours"] <- ">10"
+
+# Ordering Levels
+sleepHours = factor(sleepHours, levels = c("<4", "4-6", "6-8", "8-10", ">10"))
+
+# Sleep Hours Rating
+sleepHoursRating = sleepHours
+levels(sleepHoursRating)[levels(sleepHoursRating)=="Less than 4 hours"] <- 1
+levels(sleepHoursRating)[levels(sleepHoursRating)=="4-6 hours"] <- 2
+levels(sleepHoursRating)[levels(sleepHoursRating)=="6-8 hours"] <- 3
+levels(sleepHoursRating)[levels(sleepHoursRating)=="8-10 hours"] <- 4
+levels(sleepHoursRating)[levels(sleepHoursRating)=="More than 10 hours"] <- 5
+
+sleepHoursRating = as.numeric(sleepHoursRating)
+
+# Sleep Consistency
+sleepConsistency = sleepConsistency - 3
+
+# Exercise Quality Filtering
+levels(exerciseQuality)[levels(exerciseQuality)=='(I selected "Never" in the question above so this question does not apply to me)'] <- 0
+levels(exerciseQuality)[levels(exerciseQuality)=="Light (eg. walking, jogging)"] <- 1
+levels(exerciseQuality)[levels(exerciseQuality)=="Moderate (eg. weight training, swimming, a workout)"] <- 2
+levels(exerciseQuality)[levels(exerciseQuality)=="Vigorous (eg. sprints, high exertion workouts)"] <- 3
+levels(exerciseQuality)[levels(exerciseQuality)=="Extreme (eg. CrossFit, extreme cardio / weights)"] <- 4
+
+exerciseQuality = gsub('\\(I selected "Never" in the question above so this question does not apply to me\\)', 0, exerciseQuality)
+exerciseQuality = gsub("Light \\(eg. walking, jogging\\)", 1, exerciseQuality)
+exerciseQuality = gsub("Moderate \\(eg. weight training, swimming, a workout\\)", 2, exerciseQuality)
+exerciseQuality = gsub("Vigorous \\(eg. sprints, high exertion workouts\\)", 3, exerciseQuality)
+exerciseQuality = gsub("Extreme \\(eg. CrossFit, extreme cardio / weights\\)", 4, exerciseQuality)
+
+calcExerciseRating <- function(quality) {
+  quality = mean(as.integer(strsplit(quality, ",")[[1]]))
+  return(quality)
+}
+
+for (i in (1:length(exerciseQuality))) {
+  exerciseQuality[i] = calcExerciseRating(exerciseQuality[i])
+} 
+
+exerciseQuality = as.numeric(exerciseQuality)
+
+# Creating Data Frame
+wrangled = data.frame(age, gender, sleepHours, sleepHoursRating, sleepConsistency, sleepQuality, sleepTime, exerciseTime, exerciseTimeRating, exerciseQuality, familyHistory, uneasiness, avolition, pessimism, panic, overwhelmed)
+
+# Mental Health Score - General mental health formula 
+wrangled$mentalScore = 15-rowSums(wrangled[12:16])
+
+# Sleep Score - General sleep formula
+wrangled$sleepScore = sqrt(0.5*wrangled$sleepConsistency^2 + (wrangled$sleepQuality^2+wrangled$sleepHoursRating^2))
+
+# Exercise Score - General exercise formula
+wrangled$exerciseScore = exerciseQuality*exerciseTimeRating
+
+createScatter <- function(dataset, xAxis, yAxis, xTitle, yTitle) {
+  graph = ggplot(dataset, aes(x=xAxis, y=yAxis)) + geom_jitter(color="red") + geom_smooth(method = "lm") + labs(x = xTitle, y = yTitle) + theme_classic()
+  return(graph)
+}
+
+
+# No Exercise Data Frame - Isolated subjects with below average exercise
+filteredSleepScore = wrangled$sleepScore[wrangled$exerciseScore<median(wrangled$exerciseScore)]
+filteredMentalScore = wrangled$mentalScore[wrangled$exerciseScore<median(wrangled$exerciseScore)]
+noExercise = data.frame(filteredSleepScore, filteredMentalScore)
+
+# No Sleep Data Frame - Isolated subjects with below average sleep
+filteredExerciseScore = wrangled$exerciseScore[wrangled$sleepScore<median(wrangled$sleepScore)]
+
+filteredMentalScore = wrangled$mentalScore[wrangled$sleepScore<median(wrangled$sleepScore)]
+
+noSleep = data.frame(filteredExerciseScore, filteredMentalScore)
+# + ylim(0, 15)
+
+createScatter(wrangled, wrangled$sleepHoursRating, wrangled$mentalScore, "Sleep Length", "Mental Health Score") + ylim(0, 15) + ggtitle("Sleep Length vs Mental Health")
+
+createScatter(wrangled, wrangled$sleepQuality, wrangled$mentalScore, "Sleep Quality", "Mental Health Score") + ylim(0, 15) + ggtitle("Sleep Quality vs Mental Health")
+
+a = ggplot(wrangled, aes(x = mentalScore))
+a + geom_area(aes(fill = gender), stat ="bin", alpha=0.6, bins=8) +
+  theme_classic()
+a = ggplot(wrangled, aes(x = exerciseQuality))
+a + geom_density(aes(fill = exerciseTime), alpha=0.6, linetype = "blank")
+class(exerciseQuality)
+print(exerciseQuality)
+
+createScatter(wrangled, wrangled$exerciseTimeRating, wrangled$mentalScore, "Exercise Length", "Mental Health Score") + ylim(0, 15)
+
+createScatter(wrangled, wrangled$sleepConsistency, wrangled$mentalScore, "Sleep Consistency", "Mental Health Score") + ylim(0, 15) + ggtitle("Sleep Consistency vs Mental Health")
+
+createScatter(wrangled, wrangled$sleepScore, wrangled$mentalScore, "Sleep Score", "Mental Health Score") + ylim(0, 15) + ggtitle("Sleep Score vs Mental Health")
+
+createScatter(noExercise, noExercise$filteredSleepScore, noExercise$filteredMentalScore, "Sleep Score", "Mental Health Score") + ylim(0, 15) + ggtitle("Low exercise participants: Sleep Score vs Mental Health")
+
+createScatter(noSleep, noSleep$filteredExerciseScore, filteredMentalScore, "Exercise Score", "Mental Health Score") + ggtitle("Low sleep participants: Exercise Score vs Mental Health")
+
+a = ggplot(wrangled, aes(x = mentalScore))
+a + geom_area(aes(fill = gender), stat ="bin", alpha=0.6, bins=8) +
+  theme_classic() + ggtitle("Gender and Mental Health")
+
+b = ggplot(wrangled, aes(x = sleepScore))
+b + geom_area(aes(fill = gender), stat ="bin", alpha=0.6, bins=10) +
+  theme_classic() + ggtitle("Gender and Sleep Score")
+
+c = ggplot(wrangled, aes(x = exerciseScore))
+c + geom_area(aes(fill = gender), stat ="bin", alpha=0.6, bins=14) +
+  theme_classic() + ggtitle("Gender and Exercise Score")
+
+
+```
+str(survey)
+
+# Quick look at top 5 rows of data
+head(survey)
+
+## Size of data
+dim(survey)
+
+## R's classification of data
+class(survey)
+
+## R's classification of variables
+str(survey)
+
+print(survey$)
+#sapply(mtcars, class)
+
+Summary:
+
+- The data came from ...
+- The data is/is not valid because ...
+- Possible issues include ...
+- Each row represents ...
+- Each column represents ...
+
+<br>
+
+## Research Question 1
+
+Insert text and analysis. 
+
+Summary: 
+
+<br>
+
+## Research Question 2
+
+Insert text and analysis. 
+
+Summary: 
+
+<br>
+
+# References (if needed)
+
+Style: APA 
+
+<br>
